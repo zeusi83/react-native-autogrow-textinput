@@ -1,5 +1,6 @@
-import React, {Component, PropTypes} from 'react';
+import React, {Component} from 'react';
 import ReactNative, {View, TextInput, LayoutAnimation, Platform, NativeModules} from 'react-native';
+import PropTypes from 'prop-types';
 
 const ANDROID_PLATFORM = (Platform.OS === 'android');
 const IOS_PLATFORM = (Platform.OS === 'ios');
@@ -8,6 +9,16 @@ const DEFAULT_ANIM_DURATION = 100;
 const AutoGrowTextInputManager = NativeModules.AutoGrowTextInputManager;
 
 export default class AutoGrowingTextInput extends Component {
+  static defaultProps = {
+    autoGrowing: true,
+    minHeight: 35,
+    initialHeight: 35,
+    maxHeight: null,
+    animation: {animated: false, duration: DEFAULT_ANIM_DURATION},
+    disableScrollAndBounceIOS: false,
+    enableScrollToCaretIOS: false,
+  };
+
   constructor(props) {
     super(props);
 
@@ -17,8 +28,7 @@ export default class AutoGrowingTextInput extends Component {
     this._onContentSizeChangeIOS = this._onContentSizeChangeIOS.bind(this);
 
     this.state = {
-      height: this._getValidHeight(props.initialHeight),
-      androidFirstContentSizeChange: true
+      height: this._getValidHeight(props.initialHeight)
     };
   }
 
@@ -59,8 +69,8 @@ export default class AutoGrowingTextInput extends Component {
       <TextInput
         multiline={true}
         {...this.props} {...this.style}
-        style={[this.props.style, {height: this._getValidHeight(this.state.height), flex: 1}]}
-        onContentSizeChange={this._onContentSizeChangeAndroid}
+        style={[this.props.style, {height: this._getValidHeight(this.state.height), flex: 1, textAlign: 'left'}]}
+        onContentSizeChange={(event) => {this._onContentSizeChangeAndroid(event)}}
         onChange={this._onChangeAndroid}
         ref={(r) => { this._textInput = r; }}
       />
@@ -85,27 +95,14 @@ export default class AutoGrowingTextInput extends Component {
     return ANDROID_PLATFORM ? this._renderTextInputAndroid() : this._renderTextInputIOS();
   }
 
-  /*
-   TextInput onContentSizeChange should fix the issue with "initial value doesn't receive change event"
-   While this works perfectly on iOS, on Android you only get it on the first time the component is displayed..
-   So on Android a height update for the initial value is performed in `onContentSizeChange`, but the rest
-   of the updates are still performed via `onChange` as it was before
-   using a flag (androidFirstContentSizeChange) to pervent multiple updates in case both notifications works simultaniously in some cases
-   */
   _onContentSizeChangeAndroid(event) {
-    if(this.state.androidFirstContentSizeChange) {
-      this.setState({androidFirstContentSizeChange: false});
-      this._handleNativeEvent(event.nativeEvent);
-    }
+    this._handleNativeEvent(event.nativeEvent);
     if (this.props.onContentSizeChange) {
       this.props.onContentSizeChange(event);
     }
   }
 
   _onChangeAndroid(event) {
-    if(!this.state.androidFirstContentSizeChange) {
-      this._handleNativeEvent(event.nativeEvent);
-    }
     if (this.props.onChange) {
       this.props.onChange(event);
     }
@@ -192,13 +189,4 @@ AutoGrowingTextInput.propTypes = {
   animation: PropTypes.object,
   disableScrollAndBounceIOS: PropTypes.bool,
   enableScrollToCaretIOS: PropTypes.bool,
-};
-AutoGrowingTextInput.defaultProps = {
-  autoGrowing: true,
-  minHeight: 35,
-  initialHeight: 35,
-  maxHeight: null,
-  animation: {animated: false, duration: DEFAULT_ANIM_DURATION},
-  disableScrollAndBounceIOS: false,
-  enableScrollToCaretIOS: false,
 };
